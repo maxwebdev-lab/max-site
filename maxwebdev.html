@@ -9,37 +9,57 @@
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-family: Arial, sans-serif;
+      font-family: 'Arial', sans-serif;
     }
     body {
       line-height: 1.6;
-      background-color: #f4f4f4;
-      color: #333;
+      background-color: #0b1a2b; /* Dark navy blue */
+      color: #fff;
     }
     a {
       text-decoration: none;
-      color: #fff;
+      color: #00ffea; /* Neon accent */
     }
     header {
-      background: #1e1e1e;
-      color: #fff;
-      padding: 20px 0;
       text-align: center;
+      padding: 40px 20px;
+    }
+    .glow-text {
+      font-size: 3rem;
+      font-weight: bold;
+      color: #00fff0;
+      text-transform: uppercase;
+      text-shadow:
+        0 0 5px #00fff0,
+        0 0 10px #00fff0,
+        0 0 20px #00fff0,
+        0 0 40px #00fff0,
+        0 0 80px #00fff0;
+    }
+    nav {
+      margin-top: 15px;
     }
     nav a {
       margin: 0 15px;
       color: #fff;
       font-weight: bold;
+      transition: 0.3s;
+    }
+    nav a:hover {
+      color: #00fff0;
     }
     .hero {
-      background: #4CAF50;
-      color: #fff;
-      padding: 100px 20px;
       text-align: center;
+      padding: 100px 20px;
     }
     .hero h1 {
       font-size: 2.5rem;
+      color: #00ffea;
       margin-bottom: 20px;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      color: #ccc;
     }
     section {
       padding: 60px 20px;
@@ -49,7 +69,7 @@
     h2 {
       text-align: center;
       margin-bottom: 40px;
-      color: #1e1e1e;
+      color: #00fff0;
     }
     .services {
       display: flex;
@@ -58,12 +78,16 @@
       gap: 20px;
     }
     .service-card {
-      background: #fff;
+      background: #11253b;
       padding: 20px;
       flex: 1 1 250px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      border-radius: 10px;
+      box-shadow: 0 0 20px #00fff0;
       text-align: center;
+      transition: transform 0.3s;
+    }
+    .service-card:hover {
+      transform: translateY(-10px);
     }
     .contact form {
       display: flex;
@@ -75,23 +99,30 @@
       padding: 10px;
       margin-bottom: 15px;
       border-radius: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #00fff0;
+      background-color: #0b1a2b;
+      color: #fff;
       font-size: 1rem;
     }
     .contact button {
       padding: 12px;
-      background: #4CAF50;
-      color: #fff;
+      background: #00fff0;
+      color: #0b1a2b;
       border: none;
       border-radius: 5px;
       font-size: 1rem;
       cursor: pointer;
+      transition: 0.3s;
+    }
+    .contact button:hover {
+      background: #00c1b0;
     }
     footer {
-      background: #1e1e1e;
+      background: #0a1625;
       color: #fff;
       text-align: center;
       padding: 20px 0;
+      margin-top: 40px;
     }
     @media(max-width: 768px) {
       .services {
@@ -103,7 +134,7 @@
 <body>
 
   <header>
-    <h1>Max Web Development</h1>
+    <h1 class="glow-text">Max Web Development</h1>
     <nav>
       <a href="#about">About</a>
       <a href="#services">Services</a>
@@ -112,14 +143,14 @@
   </header>
 
   <section class="hero">
-    <h1>Hi, I’m Max</h1>
-    <p>I create clean, professional websites for businesses and individuals using modern tools and AI.</p>
+    <h1>Build Your Dream Website</h1>
+    <p>Fast, modern, and responsive websites for businesses and individuals. Powered by AI-assisted design for perfect results.</p>
   </section>
 
   <section id="about">
     <h2>About Me</h2>
     <p style="text-align:center; max-width: 700px; margin:auto;">
-      I specialize in web design and automation. I help businesses establish their online presence with websites that are fast, responsive, and modern.
+      I’m Max. I create websites that are fast, responsive, and modern. My goal is to help businesses establish a strong online presence quickly and efficiently.
     </p>
   </section>
 
@@ -128,15 +159,15 @@
     <div class="services">
       <div class="service-card">
         <h3>Web Design</h3>
-        <p>Modern, responsive websites tailored to your business needs.</p>
+        <p>Custom websites that look amazing on any device.</p>
       </div>
       <div class="service-card">
         <h3>AI Automation</h3>
-        <p>Automating repetitive tasks to save time and increase productivity.</p>
+        <p>Automate repetitive tasks to save time and grow faster.</p>
       </div>
       <div class="service-card">
         <h3>Landing Pages</h3>
-        <p>Clean, attractive landing pages to capture leads and grow sales.</p>
+        <p>Attractive pages to capture leads and increase sales.</p>
       </div>
     </div>
   </section>
