@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BTC Miner Simulator — Prototype (DEMO)</title>
+<meta name="description" content="Prototype demo — simulated BTC mining, leaderboard, referral, mock payment flow. NOT real.">
+<style>
+  :root{
+    --bg:#071233; --card:#0b1940; --muted:#9fb0d9; --accent:#ffd24d; --accent-2:#4fa3ff;
+    --glass:rgba(255,255,255,0.03); --radius:12px; --text:#eef6ff; --container:1100px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial; background:linear-gradient(180deg,var(--bg),#041029);color:var(--text);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--container);margin:0 auto;padding:18px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{font-weight:800;color:var(--accent);font-size:20px;text-decoration:none}
+  .nav{display:flex;gap:10px}
+  .nav button{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 12px;border-radius:9px;color:var(--muted);cursor:pointer}
+  .nav button.active{color:var(--text);border-color:rgba(255,255,255,0.06);background:linear-gradient(90deg,var(--accent-2),#68b5ff)}
+  .notice{background:#662222;padding:10px;border-radius:8px;color:#fff;margin:14px 0}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+  .card{background:linear-gradient(180deg,var(--glass), rgba(255,255,255,0.01));padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+  .machines{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+  .machine{padding:12px;border-radius:10px;background:#061635}
+  .muted{color:var(--muted);font-size:14px}
+  .btn{display:inline-block;padding:8px 12px;border-radius:8px;border:none;font-weight:700;cursor:pointer}
+  .btn-primary{background:linear-gradient(90deg,var(--accent),#ffc94d);color:#042042}
+  .btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text)}
+  .wallet{display:flex;flex-direction:column;gap:8px}
+  .wallet .big{font-size:22px;font-weight:800}
+  .log{max-height:220px;overflow:auto;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px;font-size:13px}
+  .meter{height:8px;border-radius:6px;background:rgba(255,255,255,0.03);overflow:hidden}
+  .meter > i{display:block;height:100%;background:linear-gradient(90deg,#47ffb4,#00b894);width:0%}
+  .leaderboard{display:flex;flex-direction:column;gap:8px}
+  .leader-item{display:flex;justify-content:space-between;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)}
+  .ref{display:flex;gap:8px;align-items:center}
+  .modal-back{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:none;align-items:center;justify-content:center;z-index:60}
+  .modal{width:420px;background:var(--card);padding:16px;border-radius:10px;border:1px solid rgba(255,255,255,0.04)}
+  .small{font-size:13px;color:var(--muted)}
+  .tabs{display:flex;gap:8px;margin-bottom:12px}
+  .tab{padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.02);cursor:pointer;color:var(--muted)}
+  .tab.active{background:linear-gradient(90deg,var(--accent-2),#68b5ff);color:#042042}
+  footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+  .admin-controls{display:flex;gap:8px;flex-wrap:wrap}
+  .floating-wa{
+    position:fixed;right:18px;bottom:18px;background:#25D366;border-radius:999px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,0.4);z-index:80;
+    display:flex;align-items:center;gap:8px;color:#042042;font-weight:700;cursor:pointer;text-decoration:none
+  }
+  .floating-wa img{width:20px;height:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}.modal{width:92%}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div style="display:flex;flex-direction:column">
+        <a class="brand">BTC Miner Simulator — Prototype</a>
+        <div class="small" id="btc-price">BTC price: —</div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="nav" role="navigation" aria-label="Main nav">
+          <button class="nav-btn active" data-page="home">Home</button>
+          <button class="nav-btn" data-page="leader">Leaderboard</button>
+          <button class="nav-btn" data-page="wallet">Wallet</button>
+          <button class="nav-btn" data-page="admin">Admin</button>
+        </div>
+
+        <!-- WhatsApp contact button (opens in new tab/app) -->
+        <a id="whatsapp-link-header" class="btn btn-primary" href="https://wa.link/irvf8y" target="_blank" rel="noopener noreferrer" style="margin-left:12px">Contact on WhatsApp</a>
+      </div>
+    </header>
+
+    <!-- PAGES -->
+    <main>
+      <!-- HOME PAGE -->
+      <section id="page-home">
+        <div class="grid">
+          <section class="card">
+            <h3 style="margin-top:0">Mining Machines (Simulated)</h3>
+            <p class="muted">Run machines with virtual credits to generate simulated BTC. All balances are local to this browser and demo-only.</p>
+
+            <div class="machines" id="machines"></div>
+
+            <div style="margin-top:12px" class="card" id="run-area" aria-live="polite">
+              <h4 style="margin:8px 0">Active Machine</h4>
+              <div id="active-info" class="muted">No machine running</div>
+              <div style="margin-top:10px">
+                <div class="meter" aria-hidden><i id="progress" style="width:0%"></i></div>
+                <div style="margin-top:8px" id="progress-text" class="muted">0%</div>
+              </div>
+              <div style="margin-top:10px">
+                <button class="btn btn-primary" id="stop-btn" disabled>Stop (Demo)</button>
+                <button class="btn btn-outline" id="quick-run">Quick Run</button>
+              </div>
+            </div>
+          </section>
+
+          <aside class="card">
+            <h4 style="margin-top:0">Virtual Wallet</h4>
+            <div class="wallet">
+              <div class="big" id="wallet-balance">Balance: 0 credits</div>
+              <div class="small">Virtual BTC: <span id="btc-balance">0.00000000 BTC</span></div>
+
+              <div style="margin-top:8px">
+                <button class="btn btn-primary" id="open-topup">Top Up (Mock Payment)</button>
+                <button class="btn btn-outline" id="open-ref">Use Referral</button>
+              </div>
+            </div>
+
+            <hr style="margin:12px 0;border-color:rgba(255,255,255,0.03)">
+
+            <div>
+              <h4 style="margin:6px 0">Activity Log</h4>
+              <div class="log" id="log"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- LEADERBOARD -->
+      <section id="page-leader" class="card hide" style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h3 style="margin:0">Leaderboard</h3>
+          <div class="small">Top simulated BTC earners (demo)</div>
+        </div>
+        <div style="margin-top:12px" id="leaderboard" class="leaderboard"></div>
+
+        <div style="margin-top:12px" class="card">
+          <h4 style="margin:0 0 8px 0">Referral Program (Demo)</h4>
+          <p class="muted">Share your referral code. When someone uses it to top-up flow, you both get bonus demo credits.</p>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="card small" style="padding:10px;border-radius:8px" id="my-ref">Your code: <strong id="my-code"></strong></div>
+            <button class="btn btn-outline" id="regen-ref">Regenerate Code</button>
+          </div>
+          <div style="margin-top:8px" class="small">Tip: Use referrals when demoing to friends to show rewards flow.</div>
+        </div>
+      </section>
+
+      <!-- WALLET / TOPUP HISTORY -->
+      <section id="page-wallet" class="hide" style="margin-top:12px">
+        <div class="card">
+          <h3 style="margin-top:0">Wallet Payments</h3>
+
+          <div style="margin-top:12px" class="tabs">
+            <div class="tab active" data-tab="topup">Top Up (Mock)</div>
+            <div class="tab" data-tab="history">Top-Up History</div>
+          </div>
+
+          <div id="tab-topup">
+            <label class="small">Amount (credits)</label>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input type="number" id="mock-amount" value="500" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)">
+              <button class="btn btn-primary" id="mock-pay">Proceed to Mock Payment</button>
+            </div>
+            <div style="margin-top:10px" class="small muted">This opens a mock payment modal — no real money is charged.</div>
+          </div>
+
+          <div id="tab-history" class="hide" style="margin-top:10px">
+            <div id="topup-history" class="small muted">No mock top-ups yet.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN -->
+      <section id="page-admin" class="hide" style="margin-top:12px">
+        <div class="card">
+          <h3 style="margin-top:0">Admin Panel (DEMO)</h3>
+          <p class="muted">Client-side demo admin — not secure. Use only for prototype control and demoing activity logs.</p>
+
+          <div style="margin-top:10px" id="admin-locked">
+            <label class="small">Enter admin passcode to unlock:</label>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input id="admin-pass" placeholder="passcode" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)">
+              <button class="btn btn-primary" id="admin-unlock">Unlock</button>
+            </div>
+          </div>
+
+          <div id="admin-area" class="hide" style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small">Admin Controls</div>
+              <div><button class="btn btn-outline" id="admin-lock">Lock</button></div>
+            </div>
+
+            <div style="margin-top:10px" class="admin-controls">
+              <button class="btn btn-primary" id="add-machine">Add Machine (demo)</button>
+              <button class="btn btn-outline" id="clear-logs">Clear Activity Logs</button>
+              <button class="btn btn-outline" id="reset-data">Reset All Data</button>
+            </div>
+
+            <div style="margin-top:12px">
+              <h4 style="margin:6px 0">Activity Logs</h4>
+              <div class="log" id="admin-log"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer>
+      min your BTC solid — demo only
+    </footer>
+  </div>
+
+  <!-- Floating WhatsApp -->
+  <a id="floating-wa" class="floating-wa" href="https://wa.link/irvf8y" target="_blank" rel="noopener noreferrer" title="Contact on WhatsApp">
+    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23042042'><path d='M20.52 3.48A11.95 11.95 0 0012 0C5.37 0 .01 5.37.01 12a11.8 11.8 0 001.84 6.18L0 24l5.98-1.65A12 12 0 0012 24c6.63 0 12-5.37 12-12 0-3.2-1.25-6.19-3.48-8.52zM12 22.2a10.1 10.1 0 01-5.34-1.54l-.38-.22-3.55.98.95-3.47-.25-.39A10.02 10.02 0 1122 12c0 5.53-4.47 10.2-10 10.2z'/><path d='M17 14.07c-.28-.14-1.65-.81-1.9-.9-.25-.08-.43-.12-.61.13-.18.26-.68.9-.83 1.09-.15.18-.3.2-.57.07-.67-.32-2.49-1.49-3.2-2.1-.28-.25-.03-.39.2-.64.21-.24.47-.62.71-.93.09-.15.04-.28-.02-.38-.06-.09-.61-1.49-.84-2.04-.22-.53-.44-.46-.61-.47l-.52-.01c-.18 0-.47.07-.71.34-.24.27-.9.88-.9 2.15s.92 2.5 1.05 2.67c.12.16 1.81 2.88 4.38 3.93 1.6.7 2.26.75 3.06.64.49-.07 1.6-.65 1.82-1.27.22-.62.22-1.15.15-1.27-.07-.12-.26-.18-.54-.32z'/></svg>" alt="WA">
+    WhatsApp
+  </a>
+
+  <!-- MODALS -->
+  <div class="modal-back" id="modal-back">
+    <div class="modal" role="dialog" aria-modal="true" id="modal">
+      <!-- content replaced by JS -->
+    </div>
+  </div>
+
+<script>
+/* -------------------------
+   BTC Simulator Prototype
+   - Multi-page within a single file
+   - Leaderboard, referrals, mock payment modal, admin area
+   - DEMO only: no real payments, no real BTC
+--------------------------*/
+
+const DEFAULT_ADMIN_PASS = 'admin123'; // demo passcode (visible; prototype only)
+const STORAGE_KEY = 'btc_sim_proto_v2';
+
+// Sample data (persisted to localStorage)
+let state = {
+  walletCredits: 10000,
+  btcBalance: 0,
+  machines: [
+    {id:'m1',name:'Hobby Miner',cost:50,ratePerMin:0.00001,runTimeSec:60,desc:'Low power demo'},
+    {id:'m2',name:'Pro Miner',cost:200,ratePerMin:0.00006,runTimeSec:120,desc:'Better yields'},
+    {id:'m3',name:'Data Farm',cost:800,ratePerMin:0.00035,runTimeSec:300,desc:'High throughput'}
+  ],
+  activity: [], // logs
+  leaderboard: [
+    {user:'Alice',btc:0.0042},
+    {user:'Bob',btc:0.0031},
+    {user:'Charlie',btc:0.0022}
+  ],
+  referrals: {}, // code => {owner,uses}
+  myCode: null,
+  topupHistory: []
+};
+
+// load / save
+function loadState(){ try{ const s = localStorage.getItem(STORAGE_KEY); if(s) state = JSON.parse(s); }catch(e){} }
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+// init
+loadState();
+if(!state.myCode) generateReferral();
+
+// UI refs
+const pages = {home:document.getElementById('page-home'), leader:document.getElementById('page-leader'), wallet:document.getElementById('page-wallet'), admin:document.getElementById('page-admin')};
+const navBtns = document.querySelectorAll('.nav-btn');
+
+// nav handling
+navBtns.forEach(b=>{
+  b.addEventListener('click',(e)=>{
+    navBtns.forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const page = b.getAttribute('data-page');
+    showPage(page);
+  });
+});
+function showPage(name){
+  Object.keys(pages).forEach(k=>{
+    const el = pages[k];
+    if(!el) return;
+    if(k === name) el.classList.remove('hide'); else el.classList.add('hide');
+  });
+  if(name === 'home') renderMachines();
+  if(name === 'leader') renderLeaderboard();
+  if(name === 'wallet') renderTopupHistory();
+  if(name === 'admin') { /* admin locked UI handled separately */ }
+}
+
+// render machines
+function renderMachines(){
+  const root = document.getElementById('machines');
+  root.innerHTML = state.machines.map(m=>`
+    <div class="machine card" data-id="${m.id}">
+      <div style="font-weight:700">${m.name}</div>
+      <div class="muted" style="margin:6px 0">${m.desc}</div>
+      <div><strong>Cost:</strong> ${m.cost} credits</div>
+      <div><strong>Sim rate:</strong> ${m.ratePerMin} BTC / min</div>
+      <div style="margin-top:8px">
+        <button class="btn btn-primary" data-run="${m.id}">Run</button>
+        <button class="btn btn-outline" data-preview="${m.id}">Preview</button>
+      </div>
+    </div>
+  `).join('');
+  // attach handlers for generated buttons
+  document.querySelectorAll('[data-run]').forEach(btn=>{
+    btn.addEventListener('click', ()=> startMachine(btn.getAttribute('data-run')));
+  });
+  document.querySelectorAll('[data-preview]').forEach(btn=>{
+    btn.addEventListener('click', ()=> preview(btn.getAttribute('data-preview')));
+  });
+  renderWalletUI();
+  renderActivity();
+}
+
+// wallet UI
+function renderWalletUI(){
+  document.getElementById('wallet-balance').textContent = 'Balance: ' + numberWithCommas(state.walletCredits) + ' credits';
+  document.getElementById('btc-balance').textContent = state.btcBalance.toFixed(8) + ' BTC';
+}
+
+// activity log
+function log(msg){
+  const t = new Date().toLocaleString();
+  state.activity.unshift({t,msg});
+  saveState();
+  renderActivity();
+}
+function renderActivity(){
+  const root = document.getElementById('log');
+  const adminLog = document.getElementById('admin-log');
+  root.innerHTML = state.activity.map(a=>`<div>[${a.t}] ${escapeHtml(a.msg)}</div>`).join('');
+  adminLog && (adminLog.innerHTML = root.innerHTML);
+}
+
+// leaderboard
+function renderLeaderboard(){
+  const root = document.getElementById('leaderboard');
+  document.getElementById('my-code').textContent = state.myCode;
+  root.innerHTML = (state.leaderboard || [])
+    .sort((a,b)=>b.btc - a.btc)
+    .map((l,i)=>`<div class="leader-item"><div>${i+1}. ${escapeHtml(l.user)}</div><div>${l.btc.toFixed(8)} BTC</div></div>`).join('');
+}
+
+// referral
+function generateReferral(){
+  const code = 'REF' + Math.random().toString(36).slice(2,8).toUpperCase();
+  state.myCode = code;
+  state.referrals = state.referrals || {};
+  state.referrals[code] = state.referrals[code] || {owner: 'You', uses: 0};
+  saveState();
+}
+
+// helpers
+function numberWithCommas(x){ return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+function escapeHtml(unsafe) { return unsafe.replace(/[&<"'>]/g, function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'" :'&#039;'}[m];}); }
+
+/* -------------------------
+   Modal helpers
+--------------------------*/
+const modalBack = document.getElementById('modal-back');
+const modal = document.getElementById('modal');
+
+function openModal(html){
+  modal.innerHTML = html;
+  modalBack.style.display = 'flex';
+}
+function closeModal(){ modalBack.style.display = 'none'; modal.innerHTML = ''; }
+
+/* Close modal when clicking outside */
+modalBack.addEventListener('click', (e)=>{
+  if(e.target === modalBack) closeModal();
+});
+
+/* -------------------------
+   Mining simulation
+--------------------------*/
+let activeRun = null; // {timerId, machine, startedAt, progressInterval}
+const progressEl = document.getElementById('progress');
+const progressText = document.getElementById('progress-text');
+const activeInfo = document.getElementById('active-info');
+const stopBtn = document.getElementById('stop-btn');
+
+stopBtn.addEventListener('click', ()=> stopActiveMachine());
+document.getElementById('quick-run').addEventListener('click', ()=> quickRun());
+
+function startMachine(id){
+  if(activeRun) return alert('A machine is already running — stop it first.');
+  const m = state.machines.find(x=>x.id === id);
+  if(!m) return alert('Machine not found.');
+  if(state.walletCredits < m.cost) return alert('Insufficient credits. Top up to run this machine.');
+  // charge cost (demo)
+  state.walletCredits -= m.cost;
+  saveState();
+  renderWalletUI();
+
+  const duration = m.runTimeSec * 1000;
+  const startedAt = Date.now();
+  activeInfo.textContent = `Running ${m.name} — will complete in ${m.runTimeSec} sec (demo)`;
+  log(`Started ${m.name} (cost ${m.cost} credits)`);
+  stopBtn.disabled = false;
+
+  // progress animation
+  progressEl.style.width = '0%';
+  progressText.textContent = '0%';
+
+  const tick = 250;
+  let elapsed = 0;
+  activeRun = {
+    machine: m,
+    startedAt,
+    progressInterval: setInterval(()=>{
+      elapsed = Date.now() - startedAt;
+      const pct = Math.min(100, Math.round((elapsed / duration) * 100));
+      progressEl.style.width = pct + '%';
+      progressText.textContent = pct + '%';
+    }, tick),
+    finishTimeout: setTimeout(()=>{
+      finishRun(m);
+    }, duration)
+  };
+}
+
+function finishRun(m){
+  // calculate earned BTC
+  const minutes = m.runTimeSec / 60;
+  const earned = m.ratePerMin * minutes;
+  state.btcBalance += earned;
+  // optionally update leaderboard (demo)
+  state.leaderboard = state.leaderboard || [];
+  state.leaderboard.push({user:'You', btc: state.btcBalance}); // simple append
+  log(`Completed ${m.name} — earned ${earned.toFixed(8)} BTC`);
+  saveState();
+  renderWalletUI();
+  renderLeaderboard();
+  clearActiveRun();
+}
+
+function stopActiveMachine(){
+  if(!activeRun) return;
+  clearTimeout(activeRun.finishTimeout);
+  clearInterval(activeRun.progressInterval);
+  const m = activeRun.machine;
+  // partial payout: proportion of time completed
+  const elapsedMs = Date.now() - activeRun.startedAt;
+  const ratio = Math.max(0, Math.min(1, elapsedMs / (m.runTimeSec * 1000)));
+  const earned = m.ratePerMin * (m.runTimeSec / 60) * ratio;
+  state.btcBalance += earned;
+  log(`Stopped ${m.name} early — partial earn ${earned.toFixed(8)} BTC`);
+  saveState();
+  renderWalletUI();
+  renderLeaderboard();
+  clearActiveRun();
+}
+
+function clearActiveRun(){
+  if(!activeRun) return;
+  clearTimeout(activeRun.finishTimeout);
+  clearInterval(activeRun.progressInterval);
+  activeRun = null;
+  progressEl.style.width = '0%';
+  progressText.textContent = '0%';
+  activeInfo.textContent = 'No machine running';
+  stopBtn.disabled = true;
+}
+
+function quickRun(){
+  // runs a small simulated job instantly for demo
+  const m = {id:'quick', name:'Quick Demo', cost:10, ratePerMin:0.00002, runTimeSec:6};
+  if(state.walletCredits < m.cost) return alert('Insufficient credits for quick run.');
+  state.walletCredits -= m.cost;
+  const earned = m.ratePerMin * (m.runTimeSec/60);
+  state.btcBalance += earned;
+  log(`Quick run: -${m.cost} credits, +${earned.toFixed(8)} BTC`);
+  saveState();
+  renderWalletUI();
+  renderLeaderboard();
+}
+
+/* Preview machine popup */
+function preview(id){
+  const m = state.machines.find(x=>x.id === id);
+  if(!m) return;
+  openModal(`
+    <h3 style="margin-top:0">${escapeHtml(m.name)}</h3>
+    <div class="small muted">${escapeHtml(m.desc)}</div>
+    <div style="margin-top:10px">
+      <div><strong>Cost:</strong> ${m.cost} credits</div>
+      <div><strong>Run Time:</strong> ${m.runTimeSec} seconds</div>
+      <div><strong>Sim Rate:</strong> ${m.ratePerMin} BTC / min</div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-outline" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="startMachine('${m.id}'); closeModal()">Run</button>
+      </div>
+    </div>
+  `);
+}
+
+/* -------------------------
+   Mock payment flow
+--------------------------*/
+document.getElementById('open-topup').addEventListener('click', ()=> openTopupModal());
+document.getElementById('mock-pay').addEventListener('click', ()=> openTopupModal());
+
+function openTopupModal(amount){
+  const amt = amount || parseInt(document.getElementById('mock-amount').value || 0,10) || 0;
+  openModal(`
+    <h3 style="margin-top:0">Mock Payment — Checkout</h3>
+    <div class="small muted">This is a MOCK payment UI for demo only. No real money will be collected or charged.</div>
+    <div style="margin-top:10px">
+      <label class="small">Amount (credits)</label>
+      <input id="mock-input" type="number" value="${amt}" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)">
+    </div>
+    <div style="margin-top:10px">
+      <label class="small">Use Referral Code (optional)</label>
+      <input id="mock-ref" placeholder="REFCODE" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)">
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="mockProcessPayment()">Pay (Mock)</button>
+    </div>
+  `);
+}
+
+function mockProcessPayment(){
+  const amount = parseInt(document.getElementById('mock-input').value || 0,10);
+  const ref = (document.getElementById('mock-ref').value || '').trim().toUpperCase();
+  if(!amount || amount <= 0) return alert('Enter a valid amount');
+  modal.innerHTML = `<h3 style="margin-top:0">Processing (Mock)</h3><div class="small muted">Simulating secure card input...</div><div style="margin-top:12px" class="small muted">Please wait…</div>`;
+  setTimeout(()=>{
+    // apply referral bonus if valid
+    let bonus = 0;
+    if(ref && state.referrals && state.referrals[ref]){
+      state.referrals[ref].uses += 1;
+      const ownerBonus = Math.floor(amount * 0.10); // 10%
+      // if owner is you, give extra to you
+      if(state.referrals[ref].owner === 'You'){
+        state.walletCredits += ownerBonus; // extra demo bonus
+      } else {
+        // demo: credit owner (not persisted to other users in this demo)
+      }
+      bonus = ownerBonus;
+    }
+    // credit user (mock)
+    state.walletCredits += amount;
+    state.topupHistory = state.topupHistory || [];
+    const entry = {t:new Date().toLocaleString(), amount, ref, bonus};
+    state.topupHistory.unshift(entry);
+    state.activity.unshift({t:entry.t, msg:`Mock top-up ${amount} credits ${ref?('with ref '+ref):''} (bonus ${bonus})`});
+    saveState();
+    renderWalletUI();
+    renderActivity();
+    closeModal();
+    alert('Mock payment successful — credits added (demo).');
+    renderTopupHistory();
+  }, 1200);
+}
+
+// referral use modal
+document.getElementById('open-ref').addEventListener('click', ()=> {
+  openModal(`<h3 style="margin-top:0">Enter referral code</h3>
+    <div class="small muted">If you have a referral code, enter it to give both parties a demo bonus (prototype only).</div>
+    <div style="margin-top:10px"><input id="enter-ref" placeholder="REFCODE" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)"></div>
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="applyReferral()">Apply</button>
+    </div>`);
+});
+
+function applyReferral(){
+  const code = (document.getElementById('enter-ref').value || '').trim().toUpperCase();
+  if(!code) return alert('Enter a referral code');
+  if(!state.referrals[code]) return alert('Invalid referral code (demo).');
+  // demo reward: give small credits
+  state.referrals[code].uses += 1;
+  state.walletCredits += 50;
+  state.activity.unshift({t:new Date().toLocaleString(), msg:`Referral ${code} applied — +50 demo credits`});
+  saveState(); renderWalletUI(); renderActivity();
+  closeModal(); alert('Referral applied: +50 demo credits');
+}
+
+// top-up history
+function renderTopupHistory(){
+  const root = document.getElementById('topup-history');
+  if(!state.topupHistory || state.topupHistory.length === 0){ root.textContent = 'No mock top-ups yet.'; return; }
+  root.innerHTML = state.topupHistory.map(h=>`<div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:6px">${escapeHtml(h.t)} — ${h.amount} credits ${h.ref?('ref:'+h.ref+' bonus:'+h.bonus):''}</div>`).join('');
+}
+
+/* -------------------------
+   Admin controls
+--------------------------*/
+document.getElementById('admin-unlock').addEventListener('click', ()=>{
+  const val = document.getElementById('admin-pass').value || '';
+  if(val === DEFAULT_ADMIN_PASS){
+    document.getElementById('admin-locked').classList.add('hide');
+    document.getElementById('admin-area').classList.remove('hide');
+    log('Admin unlocked (demo)');
+  } else {
+    alert('Incorrect passcode (demo).');
+  }
+});
+document.getElementById('admin-lock').addEventListener('click', ()=>{
+  document.getElementById('admin-area').classList.add('hide');
+  document.getElementById('admin-locked').classList.remove('hide');
+  log('Admin locked');
+});
+document.getElementById('add-machine').addEventListener('click', ()=>{
+  const id = 'm' + (Math.random().toString(36).slice(2,6));
+  const newM = {id, name:'Custom Miner', cost:150, ratePerMin:0.00012, runTimeSec:90, desc:'Added via admin (demo)'};
+  state.machines.push(newM);
+  log(`Admin added machine ${newM.name}`);
+  saveState();
+  renderMachines();
+});
+document.getElementById('clear-logs').addEventListener('click', ()=>{
+  if(!confirm('Clear activity logs?')) return;
+  state.activity = [];
+  saveState();
+  renderActivity();
+});
+document.getElementById('reset-data').addEventListener('click', ()=>{
+  if(!confirm('Reset all demo data to defaults?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+});
+document.getElementById('regen-ref').addEventListener('click', ()=>{
+  generateReferral();
+  saveState();
+  renderLeaderboard();
+  alert('Referral code regenerated: ' + state.myCode);
+});
+
+/* -------------------------
+   Tabs (wallet)
+--------------------------*/
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.getAttribute('data-tab');
+    document.getElementById('tab-topup').classList.toggle('hide', tab !== 'topup');
+    document.getElementById('tab-history').classList.toggle('hide', tab !== 'history');
+    if(tab === 'history') renderTopupHistory();
+  });
+});
+
+/* -------------------------
+   Fetch live BTC price (CoinGecko)
+   - improves realism by showing USD price
+   - This is read-only and used only for display
+--------------------------*/
+async function fetchBtcPrice(){
+  try{
+    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    const data = await res.json();
+    if(data && data.bitcoin && data.bitcoin.usd){
+      const usd = data.bitcoin.usd;
+      document.getElementById('btc-price').textContent = 'BTC price: $' + numberWithCommas(usd);
+      // also show approximate USD value next to BTC balance
+      const approxUSD = (state.btcBalance * usd).toFixed(2);
+      document.getElementById('btc-balance').textContent = state.btcBalance.toFixed(8) + ' BTC (~$' + numberWithCommas(approxUSD) + ')';
+    }
+  }catch(e){
+    document.getElementById('btc-price').textContent = 'BTC price: unavailable';
+  }
+}
+// refresh every 60s
+fetchBtcPrice();
+setInterval(fetchBtcPrice, 60000);
+
+/* -------------------------
+   Small UI init
+--------------------------*/
+renderMachines();
+renderLeaderboard();
+renderTopupHistory();
+renderActivity();
+
+// Make sure the floating WA has correct link (user-supplied)
+document.getElementById('floating-wa').setAttribute('href','https://wa.link/irvf8y');
+document.getElementById('whatsapp-link-header').setAttribute('href','https://wa.link/irvf8y');
+
+/* -------------------------
+   Utility: ensure state saved on page unload
+--------------------------*/
+window.addEventListener('beforeunload', ()=> saveState());
+</script>
+</body>
+</html>
